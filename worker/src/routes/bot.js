@@ -1,9 +1,13 @@
-import { json } from '../index.js';
+import { json } from '../lib/response.js';
 import { handleBotLogin } from './login.js';
 
 export async function handleBot(db, env, url, request) {
   const path = url.pathname;
-  if (path.startsWith('/api/bot/login/')) return handleBotLogin(db, env, url, request);
+
+  // Login flow routes
+  if (path.startsWith('/api/bot/login/')) {
+    return handleBotLogin(db, env, url, request);
+  }
 
   if (path === '/api/bot/config' && request.method === 'GET') {
     const settings = {};
@@ -60,10 +64,10 @@ export async function handleBot(db, env, url, request) {
     const { actions } = await request.json();
     for (const a of actions) {
       await db.run('INSERT INTO action_log (account_id,action_type,group_id,detail,success) VALUES (?,?,?,?,?)',
-        a.account_id, a.action_type, a.group_id, a.detail, a.success?1:0);
+        a.account_id, a.action_type, a.group_id, a.detail, a.success ? 1 : 0);
     }
     return json({ ok: true });
   }
 
-  return json({ error: 'not_found' }, 404);
+  return json({ error: 'not_found', path }, 404);
 }

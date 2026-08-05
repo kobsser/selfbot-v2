@@ -1,17 +1,15 @@
 import { DB } from './lib/db.js';
 import { getSession } from './lib/auth.js';
 import { isJobRunning, dispatch } from './lib/github.js';
+import { json } from './lib/response.js';
 import { handleAuth } from './routes/auth.js';
 import { handleUser } from './routes/user.js';
 import { handleAdmin } from './routes/admin.js';
 import { handleBot } from './routes/bot.js';
 import { handleLogin } from './routes/login.js';
 
-export function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), {
-    status, headers: { 'Content-Type': 'application/json', ...headers }
-  });
-}
+// Re-export for any other consumers
+export { json };
 
 function serveAsset(request, env, path) {
   const url = new URL(request.url);
@@ -21,8 +19,12 @@ function serveAsset(request, env, path) {
 }
 
 async function notFound(request, env) {
-  const resp = await serveAsset(request, env, '/404.html');
-  return new Response(resp.body, { status: 404, headers: resp.headers });
+  try {
+    const resp = await serveAsset(request, env, '/404.html');
+    return new Response(resp.body, { status: 404, headers: resp.headers });
+  } catch {
+    return new Response('Not Found', { status: 404 });
+  }
 }
 
 function redirect(path) {
@@ -35,13 +37,11 @@ async function routePage(db, env, url, request) {
   const adminParam = url.searchParams.get('admin');
   const session = await getSession(db, request, env.COOKIE_SECRET);
 
-  // Admin gate
   if (adminParam !== null) {
     if (adminParam === env.ADMIN_PARAM) return serveAsset(request, env, '/admin-login.html');
     return notFound(request, env);
   }
 
-  // Invite gate
   if (key !== null) {
     const invite = await db.get('SELECT code FROM invites WHERE code=?', key);
     const user = await db.get('SELECT id FROM users WHERE invite_code=?', key);
@@ -71,34 +71,50 @@ export default {
     const path = url.pathname;
     const db = new DB(env.DB);
 
-    // API
-    if (path.startsWith('/api/bot/')) {
-      if (request.headers.get('X-Bot-Key') !== env.BOT_API_KEY) return json({ error: 'unauthorized' }, 401);
-      return handleBot(db, env, url, request);
-    }
-    if (path.startsWith('/api/auth/')) return handleAuth(db, env, url, request);
+    try {
+      // Bot API
+      if (path.startsWith('/api/bot/')) {
+        if (request.headers.get('X-Bot-Key') !== env.BOT_API_KEY)
+          return json({ error: 'unauthorized' }, 401);
+        return await handleBot(db, env, url, request);
+      }
 
-    const session = await getSession(db, request, env.COOKIE_SECRET);
+      // Auth (public)
+      if (path.startsWith('/api/auth/')) {
+        return await handleAuth(db, env, url, request);
+      }
 
-    if (path.startsWith('/api/login/')) {
-      if (!session || session.is_admin || !session.user_id) return json({ error: 'forbidden' }, 403);
-      return handleLogin(db, env, url, request, session);
-    }
-    if (path.startsWith('/api/admin/')) {
-      if (!session || !session.is_admin) return json({ error: 'forbidden' }, 403);
-      return handleAdmin(db, env, url, request, session);
-    }
-    if (path.startsWith('/api/user/')) {
-      if (!session || session.is_admin || !session.user_id) return json({ error: 'forbidden' }, 403);
-      return handleUser(db, env, url, request, session);
-    }
+      const session = await getSession(db, request, env.COOKIE_SECRET);
 
-    // Static assets (css/js) — safe to serve
-    if (path.startsWith('/css/') || path.startsWith('/js/') || path === '/favicon.ico') {
-      return env.ASSETS.fetch(request);
-    }
+      if (path.startsWith('/api/login/')) {
+        if (!session || session.is_admin || !session.user_id)
+          return json({ error: 'forbidden' }, 403);
+        return await handleLogin(db, env, url, request, session);
+      }
 
-    return routePage(db, env, url, request);
+      if (path.startsWith('/api/admin/')) {
+        if (!session || !session.is_admin)
+          return json({ error: 'forbidden' }, 403);
+        return await handleAdmin(db, env, url, request, session);
+      }
+
+      if (path.startsWith('/api/user/')) {
+        if (!session || session.is_admin || !session.user_id)
+          return json({ error: 'forbidden' }, 403);
+        return await handleUser(db, env, url, request, session);
+      }
+
+      // Static assets
+      if (path.startsWith('/css/') || path.startsWith('/js/') || path === '/favicon.ico') {
+        return env.ASSETS.fetch(request);
+      }
+
+      return await routePage(db, env, url, request);
+
+    } catch (e) {
+      console.error('Worker error:', e.message, e.stack);
+      return json({ error: 'internal_error', detail: e.message }, 500);
+    }
   },
 
   async scheduled(event, env, ctx) {

@@ -1,4 +1,4 @@
-import { json } from '../index.js';
+import { json } from '../lib/response.js';
 
 export async function handleUser(db, env, url, request, session) {
   const path = url.pathname;

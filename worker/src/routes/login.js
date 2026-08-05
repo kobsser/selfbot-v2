@@ -1,14 +1,13 @@
 import { randomHex } from '../lib/crypto.js';
 import { dispatch } from '../lib/github.js';
-import { json } from '../index.js';
+import { json } from '../lib/response.js';
 
-// User-facing: requires logged-in user session
+// User-facing login flow (cookie auth)
 export async function handleLogin(db, env, url, request, session) {
   const path = url.pathname;
   const userId = session.user_id;
   const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
 
-  // Start a login: create session + dispatch GH job
   if (path === '/api/login/start' && request.method === 'POST') {
     const phone = (body.phone || '').trim();
     if (!phone) return json({ error: 'phone_required' }, 400);
@@ -23,14 +22,13 @@ export async function handleLogin(db, env, url, request, session) {
 
     const dr = await dispatch(env, 'login-request', { login_id, phone });
     if (!dr.ok) {
-      await db.run(`UPDATE login_sessions SET status='failed', error='Failed to start login worker' WHERE id=?`, login_id);
+      await db.run(`UPDATE login_sessions SET status='failed', error='Failed to dispatch login worker' WHERE id=?`, login_id);
       return json({ error: 'dispatch_failed' }, 500);
     }
     await db.run(`UPDATE login_sessions SET status='sending_code' WHERE id=?`, login_id);
     return json({ login_id });
   }
 
-  // Helper: fetch + verify ownership
   async function own(login_id) {
     return db.get('SELECT * FROM login_sessions WHERE id=? AND user_id=?', login_id, userId);
   }
@@ -68,21 +66,25 @@ export async function handleLogin(db, env, url, request, session) {
   return json({ error: 'not_found' }, 404);
 }
 
-// Bot-facing: called by the GH login job (X-Bot-Key)
+// Bot-facing login endpoints (X-Bot-Key auth)
 export async function handleBotLogin(db, env, url, request) {
   const path = url.pathname;
   const body = request.method === 'POST' ? await request.json().catch(() => ({})) : {};
 
   if (path === '/api/bot/login/update' && request.method === 'POST') {
     const { login_id, status, phone_code_hash, error } = body;
-    await db.run(`UPDATE login_sessions SET status=?, phone_code_hash=COALESCE(?,phone_code_hash),
-      error=COALESCE(?,error), updated_at=datetime('now') WHERE id=?`,
+    if (!login_id || !status) return json({ error: 'missing_fields' }, 400);
+    await db.run(
+      `UPDATE login_sessions SET status=?, phone_code_hash=COALESCE(?,phone_code_hash),
+       error=COALESCE(?,error), updated_at=datetime('now') WHERE id=?`,
       status, phone_code_hash || null, error || null, login_id);
     return json({ ok: true });
   }
 
   if (path === '/api/bot/login/poll' && request.method === 'GET') {
-    const ls = await db.get('SELECT * FROM login_sessions WHERE id=?', url.searchParams.get('login_id'));
+    const login_id = url.searchParams.get('login_id');
+    if (!login_id) return json({ error: 'missing_login_id' }, 400);
+    const ls = await db.get('SELECT * FROM login_sessions WHERE id=?', login_id);
     if (!ls) return json({ error: 'not_found' }, 404);
     return json({
       status: ls.status,
@@ -93,6 +95,8 @@ export async function handleBotLogin(db, env, url, request) {
 
   if (path === '/api/bot/login/complete' && request.method === 'POST') {
     const { login_id, encrypted_session, phone, display_name } = body;
+    if (!login_id || !encrypted_session) return json({ error: 'missing_fields' }, 400);
+
     const ls = await db.get('SELECT * FROM login_sessions WHERE id=?', login_id);
     if (!ls) return json({ error: 'not_found' }, 404);
     const userId = ls.user_id;
@@ -106,12 +110,12 @@ export async function handleBotLogin(db, env, url, request) {
 
     const res = await db.run(
       'INSERT INTO accounts (user_id,phone,display_name,session_string_encrypted) VALUES (?,?,?,?)',
-      userId, phone, display_name || phone, encrypted_session);
+      userId, phone || ls.phone, display_name || phone || ls.phone, encrypted_session);
     const accountId = res.meta.last_row_id;
     await db.run('INSERT INTO account_settings (account_id) VALUES (?)', accountId);
     await db.run(`UPDATE login_sessions SET status='done', account_id=? WHERE id=?`, accountId, login_id);
     return json({ ok: true, account_id: accountId });
   }
 
-  return json({ error: 'not_found' }, 404);
+  return json({ error: 'not_found', path }, 404);
 }

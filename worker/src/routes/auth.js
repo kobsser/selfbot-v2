@@ -1,6 +1,6 @@
 import { hashPassword, randomHex } from '../lib/crypto.js';
 import { issueSignedSession, sessionCookie, clearCookie, getSession } from '../lib/auth.js';
-import { json } from '../index.js';
+import { json } from '../lib/response.js';
 
 export async function handleAuth(db, env, url, request) {
   const path = url.pathname;

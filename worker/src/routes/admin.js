@@ -1,6 +1,6 @@
 import { randomHex } from '../lib/crypto.js';
 import { dispatch } from '../lib/github.js';
-import { json } from '../index.js';
+import { json } from '../lib/response.js';
 
 export async function handleAdmin(db, env, url, request, session) {
   if (!session.is_admin) return json({ error: 'forbidden' }, 403);
