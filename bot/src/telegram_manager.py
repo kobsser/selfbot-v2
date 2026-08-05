@@ -1,10 +1,10 @@
 import asyncio
 from pyrogram import Client
 from pyrogram.errors import (
-    ConnectionError,
     RPCError,
     UserDeactivated,
     AuthKeyUnregistered,
+    FloodWait,
 )
 from utils.logger import get_logger
 from utils.retry import async_retry
@@ -19,12 +19,11 @@ class TelegramManager:
         self.api_id = api_id
         self.api_hash = api_hash
         self.crypto = crypto
-        self.clients = {}  # account_id -> Client
-        self.tasks = {}    # account_id -> list of asyncio tasks
+        self.clients = {}
+        self.tasks = {}
 
-    @async_retry(max_retries=3, delay=2.0, exceptions=(ConnectionError, TimeoutError))
+    @async_retry(max_retries=3, delay=2.0, exceptions=(RPCError, TimeoutError, OSError))
     async def start_client(self, account: dict) -> Client:
-        """Start a Kurigram client for an account."""
         account_id = account["id"]
         phone = account["phone"]
         session_string = self.crypto.decrypt(account["session_string_encrypted"])
@@ -50,12 +49,15 @@ class TelegramManager:
         except (UserDeactivated, AuthKeyUnregistered) as e:
             log.error(f"[{phone}] Session invalid/deactivated: {e}")
             raise
+        except FloodWait as e:
+            log.warning(f"[{phone}] FloodWait {e.value}s, waiting...")
+            await asyncio.sleep(e.value)
+            raise
         except Exception as e:
             log.error(f"[{phone}] Failed to connect: {e}")
             raise
 
     async def stop_client(self, account_id: int):
-        """Gracefully stop a client."""
         client = self.clients.pop(account_id, None)
         if client:
             try:
@@ -65,12 +67,10 @@ class TelegramManager:
                 log.warning(f"[{account_id}] Error stopping client: {e}")
 
     async def stop_all(self):
-        """Stop all clients."""
         for account_id in list(self.clients.keys()):
             await self.stop_client(account_id)
 
     async def monitor_client(self, account: dict, client: Client, on_disconnect):
-        """Monitor a client and trigger reconnect if needed."""
         account_id = account["id"]
         phone = account["phone"]
 
@@ -81,7 +81,6 @@ class TelegramManager:
                     log.warning(f"[{phone}] Client disconnected, triggering reconnect")
                     await on_disconnect(account)
                     break
-                # Simple ping to verify connection
                 await client.get_me()
             except Exception as e:
                 log.warning(f"[{phone}] Health check failed: {e}")
