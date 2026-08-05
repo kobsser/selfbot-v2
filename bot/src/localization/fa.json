@@ -1,0 +1,27 @@
+{
+  "game_terms": {
+    "meow": "میو",
+    "meow_keyword": "میو",
+    "pishi": "پیشی",
+    "pishi_keyword": "پیشی",
+    "smuggle": "قاچاق",
+    "smuggle_keyword": "قاچاق",
+    "meow_point": "میو پوینت",
+    "meow_point_keyword": "میو پوینت"
+  },
+  "ui": {
+    "dashboard": "داشبورد",
+    "accounts": "حساب‌ها",
+    "settings": "تنظیمات",
+    "active": "فعال",
+    "inactive": "غیرفعال",
+    "add_account": "افزودن حساب",
+    "logout": "خروج"
+  },
+  "status": {
+    "running": "در حال اجرا",
+    "stopped": "متوقف",
+    "waiting": "در انتظار",
+    "error": "خطا"
+  }
+}

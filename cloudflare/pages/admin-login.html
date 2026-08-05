@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="theme-toggle-row">
+        <button id="themeToggle" class="icon-btn">🌓</button>
+      </div>
+      <h2>Admin Access</h2>
+      <form id="adminForm">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="adminPassword" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Enter</button>
+        <div id="error" class="error-msg"></div>
+      </form>
+    </div>
+  </div>
+  <script>
+    window.API_BASE = 'https://selfbot-api.YOUR_SUBDOMAIN.workers.dev';
+    // Capture admin param from referrer or store in sessionStorage
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin')) sessionStorage.setItem('admin_param', params.get('admin'));
+  </script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    document.getElementById('adminForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const param = sessionStorage.getItem('admin_param') || '';
+      const password = document.getElementById('adminPassword').value;
+      const res = await api.post('/api/auth/admin', { param, password });
+      if (res.ok) {
+        window.location.href = '/admin.html';
+      } else {
+        document.getElementById('error').textContent = 'Invalid credentials';
+      }
+    });
+  </script>
+</body>
+</html>

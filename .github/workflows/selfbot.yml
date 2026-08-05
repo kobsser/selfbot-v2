@@ -1,0 +1,55 @@
+name: selfbot-runner
+
+on:
+  repository_dispatch:
+    types: [run-selfbot]
+  workflow_dispatch:
+    inputs:
+      duration_override:
+        description: 'Override run duration (minutes, 0 = use CF setting)'
+        required: false
+        default: '0'
+
+# Prevent multiple concurrent runs
+concurrency:
+  group: selfbot
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hour hard cap
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: bot/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd bot
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run selfbot
+        env:
+          CF_API_URL: ${{ secrets.CF_API_URL }}
+          BOT_API_KEY: ${{ secrets.BOT_API_KEY }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          SESSION_ENCRYPTION_KEY: ${{ secrets.SESSION_ENCRYPTION_KEY }}
+          BOT_USER_ID: ${{ secrets.BOT_USER_ID }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          cd bot
+          python src/main.py
+
+      - name: Report failure
+        if: failure()
+        run: |
+          echo "Job failed. The CF API will mark it as failed on next cron check."
