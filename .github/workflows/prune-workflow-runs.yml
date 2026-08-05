@@ -1,0 +1,76 @@
+name: Prune workflow runs
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: "Number of newest completed workflow runs to keep"
+        required: false
+        default: "20"
+      dry_run:
+        description: "If true, only print what would be deleted"
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    # Daily at 04:00 UTC. Adjust as needed.
+    - cron: "0 * * * *"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: prune-workflow-runs
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Delete all but the newest workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KEEP: ${{ github.event.inputs.keep || '20' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || false }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          keep="${KEEP:-20}"
+          dry_run="${DRY_RUN:-false}"
+          dry_run="${dry_run,,}"
+
+          if ! [[ "$keep" =~ ^[0-9]+$ ]]; then
+            echo "::error::keep must be a non-negative integer, got: $keep"
+            exit 1
+          fi
+
+          echo "Repository: $REPO"
+          echo "Keeping newest $keep completed workflow runs across all workflows."
+          echo "Dry run: $dry_run"
+
+          # GitHub returns repository workflow runs newest-first.
+          # status=completed avoids trying to delete queued/in-progress runs,
+          # which GitHub does not allow deleting while active.
+          gh api --paginate \
+            "/repos/$REPO/actions/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs[].id' \
+            | tail -n +$((keep + 1)) \
+            | while IFS= read -r run_id; do
+                if [[ "$dry_run" == "true" ]]; then
+                  echo "Would delete workflow run $run_id"
+                else
+                  echo "Deleting workflow run $run_id"
+                  if ! gh api --method DELETE "/repos/$REPO/actions/runs/$run_id"; then
+                    echo "::warning::Failed to delete workflow run $run_id"
+                  fi
+
+                  # Small delay to reduce pressure on secondary rate limits.
+                  sleep 0.2
+                fi
+              done
+
+          echo "Done."
