@@ -9,7 +9,7 @@ database_name = "selfbot-db"
 database_id = "2b82d6f6-ef07-4a5a-a7d6-62dcbf741383"
 
 [vars]
-PAGES_URL = "https://your-dashboard.pages.dev"
+PAGES_URL = "https://selfbot-v2.pages.dev"
 # How often the cron checks/dispatches (also used as fallback)
 DISPATCH_CHECK_MINUTES = "5"
 
