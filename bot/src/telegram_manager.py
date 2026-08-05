@@ -6,7 +6,7 @@ from pyrogram.errors import (
     AuthKeyUnregistered,
     FloodWait,
 )
-from utils.logger import get_logger
+from utils.logger import get_logger, mask_phone
 from utils.retry import async_retry
 
 log = get_logger("telegram")
@@ -26,6 +26,7 @@ class TelegramManager:
     async def start_client(self, account: dict) -> Client:
         account_id = account["id"]
         phone = account["phone"]
+        safe_phone = mask_phone(phone)
         session_string = self.crypto.decrypt(account["session_string_encrypted"])
 
         client = Client(
@@ -39,22 +40,20 @@ class TelegramManager:
         )
 
         try:
-            await client.connect()
-            if not await client.is_connected():
-                await client.start()
+            await client.start()
             me = await client.get_me()
-            log.info(f"[{phone}] Connected as {me.first_name} (id={me.id})")
+            log.info(f"[{safe_phone}] Connected (id={me.id})")
             self.clients[account_id] = client
             return client
         except (UserDeactivated, AuthKeyUnregistered) as e:
-            log.error(f"[{phone}] Session invalid/deactivated: {e}")
+            log.error(f"[{safe_phone}] Session invalid/deactivated: {e}")
             raise
         except FloodWait as e:
-            log.warning(f"[{phone}] FloodWait {e.value}s, waiting...")
+            log.warning(f"[{safe_phone}] FloodWait {e.value}s, waiting...")
             await asyncio.sleep(e.value)
             raise
         except Exception as e:
-            log.error(f"[{phone}] Failed to connect: {e}")
+            log.error(f"[{safe_phone}] Failed to connect: {e}")
             raise
 
     async def stop_client(self, account_id: int):
@@ -62,27 +61,10 @@ class TelegramManager:
         if client:
             try:
                 await client.stop()
-                log.info(f"[{account_id}] Client stopped")
+                log.info(f"[account:{account_id}] Client stopped")
             except Exception as e:
-                log.warning(f"[{account_id}] Error stopping client: {e}")
+                log.warning(f"[account:{account_id}] Error stopping: {e}")
 
     async def stop_all(self):
         for account_id in list(self.clients.keys()):
             await self.stop_client(account_id)
-
-    async def monitor_client(self, account: dict, client: Client, on_disconnect):
-        account_id = account["id"]
-        phone = account["phone"]
-
-        while True:
-            await asyncio.sleep(60)
-            try:
-                if not client.is_connected:
-                    log.warning(f"[{phone}] Client disconnected, triggering reconnect")
-                    await on_disconnect(account)
-                    break
-                await client.get_me()
-            except Exception as e:
-                log.warning(f"[{phone}] Health check failed: {e}")
-                await on_disconnect(account)
-                break

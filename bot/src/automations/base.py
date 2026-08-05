@@ -1,7 +1,7 @@
 import asyncio
 import random
 from datetime import datetime, timezone
-from utils.logger import get_logger
+from utils.logger import get_logger, mask_phone
 
 
 class BaseAutomation:
@@ -12,14 +12,14 @@ class BaseAutomation:
     def __init__(self, account_id: int, phone: str, groups: list, settings: dict):
         self.account_id = account_id
         self.phone = phone
-        self.groups = groups  # list of chat_ids
+        self.safe_phone = mask_phone(phone)
+        self.groups = groups
         self.settings = settings
-        self.log = get_logger(f"{self.name}:{phone}")
+        self.log = get_logger(f"{self.name}:acct{account_id}")
         self.actions_count = 0
         self._stop_event = asyncio.Event()
 
     def randomize_delay(self, base_delay: float) -> float:
-        """Add random jitter to avoid pattern detection."""
         if not self.settings.get("randomize_delay", True):
             return base_delay
         jitter = random.uniform(-0.15, 0.15) * base_delay
@@ -35,10 +35,14 @@ class BaseAutomation:
     def stopped(self) -> bool:
         return self._stop_event.is_set()
 
+    async def _interruptible_sleep(self, seconds: float):
+        try:
+            await asyncio.wait_for(self._stop_event.wait(), timeout=seconds)
+        except asyncio.TimeoutError:
+            pass
+
     async def run(self, client):
-        """Main loop - override in subclass."""
         raise NotImplementedError
 
     async def handle_bot_message(self, client, message):
-        """Handle incoming message from the token bot - override in subclass."""
         pass

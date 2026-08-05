@@ -2,6 +2,13 @@ import logging
 import sys
 
 
+def mask_phone(phone: str) -> str:
+    """Mask phone number, showing only last 3 digits."""
+    if not phone or len(phone) < 4:
+        return "***"
+    return f"***{phone[-3:]}"
+
+
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:

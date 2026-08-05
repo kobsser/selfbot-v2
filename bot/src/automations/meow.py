@@ -5,22 +5,14 @@ from config import GAME_KEYWORDS
 
 
 class MeowAutomation(BaseAutomation):
-    """
-    Sends 'میو' to groups periodically.
-    When the token bot replies with 'میو پوینت بعد از X', waits X seconds.
-    """
-
     name = "meow"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.interval = self.settings.get("meow_interval", 300)
-        # Per-group timers: group_id -> expiry timestamp (epoch)
         self.wait_until = {}
 
     def extract_wait_time(self, text: str) -> int:
-        """Extract seconds from token bot message like 'میو پوینت بعد از 30 ثانیه'."""
-        # Match Persian or Arabic digits
         text = text.replace('۰','0').replace('۱','1').replace('۲','2').replace('۳','3') \
                    .replace('۴','4').replace('۵','5').replace('۶','6').replace('۷','7') \
                    .replace('۸','8').replace('۹','9')
@@ -30,7 +22,6 @@ class MeowAutomation(BaseAutomation):
         return 0
 
     async def run(self, client):
-        """Main meow loop."""
         self.log.info(f"Starting meow loop for {len(self.groups)} groups, interval={self.interval}s")
 
         while not self.stopped:
@@ -38,11 +29,10 @@ class MeowAutomation(BaseAutomation):
                 if self.stopped:
                     break
 
-                # Check if we're in a waiting period for this group
                 now = asyncio.get_event_loop().time()
                 if group_id in self.wait_until and now < self.wait_until[group_id]:
                     remaining = self.wait_until[group_id] - now
-                    self.log.info(f"[{group_id}] Waiting {remaining:.0f}s (token bot cooldown)")
+                    self.log.info(f"[{group_id}] Waiting {remaining:.0f}s (cooldown)")
                     await self._interruptible_sleep(remaining)
                     continue
 
@@ -53,23 +43,13 @@ class MeowAutomation(BaseAutomation):
                 except Exception as e:
                     self.log.error(f"[{group_id}] Failed to send meow: {e}")
 
-                # Small delay between groups
                 await self._interruptible_sleep(self.randomize_delay(2))
 
-            # Wait for the interval before next round
             delay = self.randomize_delay(self.interval)
             self.log.info(f"Round complete. Sleeping {delay:.0f}s")
             await self._interruptible_sleep(delay)
 
-    async def _interruptible_sleep(self, seconds: float):
-        """Sleep that can be interrupted by stop event."""
-        try:
-            await asyncio.wait_for(self._stop_event.wait(), timeout=seconds)
-        except asyncio.TimeoutError:
-            pass
-
     async def handle_bot_message(self, client, message):
-        """Handle token bot reply about meow points."""
         text = message.text or ""
         chat_id = message.chat.id
 

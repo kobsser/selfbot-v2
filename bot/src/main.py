@@ -11,7 +11,7 @@ from state_manager import StateManager
 from telegram_manager import TelegramManager
 from automations import MeowAutomation, FishAutomation, SmuggleAutomation
 from handlers import register_handlers
-from utils.logger import get_logger
+from utils.logger import get_logger, mask_phone
 
 log = get_logger("main")
 
@@ -26,23 +26,21 @@ def handle_signal(signum, frame):
 
 
 async def run_account(account, config, crypto, state_mgr, tg_mgr):
-    """Run all automations for a single account."""
     account_id = account["id"]
     phone = account["phone"]
+    safe_phone = mask_phone(phone)
     groups = account["selected_groups"]
 
     if not groups:
-        log.warning(f"[{phone}] No groups selected, skipping")
+        log.warning(f"[account:{account_id}] No groups selected, skipping")
         return
 
-    # Load saved state for catch-up
     await state_mgr.load_account_state(account_id)
 
-    # Start Kurigram client
     try:
         client = await tg_mgr.start_client(account)
     except Exception as e:
-        log.error(f"[{phone}] Cannot start client: {e}")
+        log.error(f"[account:{account_id}] Cannot start client: {e}")
         return
 
     # Build automations based on settings
@@ -81,7 +79,7 @@ async def run_account(account, config, crypto, state_mgr, tg_mgr):
             # Check if any task crashed
             for task in tasks:
                 if task.done() and task.exception():
-                    log.error(f"[{phone}] Task {task.get_name()} crashed: {task.exception()}")
+                    log.error(f"[{safe_phone}] Task {task.get_name()} crashed: {task.exception()}")
     finally:
         # Stop all automations
         for automation in automations:
@@ -95,7 +93,7 @@ async def run_account(account, config, crypto, state_mgr, tg_mgr):
         for automation in automations:
             actions_counter["total"] += automation.actions_count
 
-        log.info(f"[{phone}] Account runner finished")
+        log.info(f"[{safe_phone}] Account runner finished")
 
 
 async def main():
