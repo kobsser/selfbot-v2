@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="dashboard.title">Dashboard</title><link rel="stylesheet" href="/css/styles.css"></head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">🐱 Selfbot</div>
+  <div class="nav-actions">
+    <button id="langToggle" class="icon-btn">EN/FA</button>
+    <button id="themeToggle" class="icon-btn">🌓</button>
+    <button id="logoutBtn" class="btn btn-sm btn-outline" data-i18n="dashboard.logout">Logout</button>
+  </div>
+</nav>
+
+<main class="container">
+  <div class="page-header">
+    <h1 data-i18n="dashboard.title">Dashboard</h1>
+    <div class="header-actions">
+      <span id="accountCount" class="badge"></span>
+      <button id="addAccountBtn" class="btn btn-primary" data-i18n="dashboard.add_account">Add Account</button>
+    </div>
+  </div>
+  <div id="accountsList" class="accounts-grid"></div>
+
+  <!-- ADD ACCOUNT: phone / code / password flow -->
+  <div id="addModal" class="modal hidden"><div class="modal-content">
+    <h3 data-i18n="dashboard.add_account">Add Account</h3>
+    <div id="stepPhone">
+      <div class="form-group"><label data-i18n="dashboard.phone">Phone Number</label>
+        <input type="tel" id="loginPhone" placeholder="+1234567890"></div>
+      <button class="btn btn-primary btn-full" id="btnSendCode" data-i18n="login_flow.send_code">Send Code</button>
+    </div>
+    <div id="stepCode" class="hidden">
+      <p class="hint" data-i18n="login_flow.code_hint">Enter the code Telegram sent you.</p>
+      <div class="form-group"><input type="text" id="loginCode" placeholder="12345" autocomplete="one-time-code"></div>
+      <button class="btn btn-primary btn-full" id="btnSubmitCode" data-i18n="login_flow.submit_code">Submit Code</button>
+    </div>
+    <div id="stepPassword" class="hidden">
+      <p class="hint" data-i18n="login_flow.password_hint">Two-step verification is enabled. Enter your Telegram password.</p>
+      <div class="form-group"><input type="password" id="loginPassword"></div>
+      <button class="btn btn-primary btn-full" id="btnSubmitPassword" data-i18n="login_flow.submit_password">Submit Password</button>
+    </div>
+    <div id="loginStatus" class="hint" style="margin-top:12px;text-align:center"></div>
+    <div id="loginError" class="error-msg"></div>
+    <div class="modal-actions"><button class="btn btn-outline" id="cancelAdd" data-i18n="common.cancel">Cancel</button></div>
+  </div></div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settingsModal" class="modal hidden"><div class="modal-content modal-wide">
+    <h3><span data-i18n="dashboard.settings">Settings</span>: <span id="settingsAccountName"></span></h3>
+    <div class="settings-section"><h4 data-i18n="dashboard.features">Features</h4>
+      <label class="toggle-row"><span>😺 <span data-i18n="game.meow">Meow</span></span><input type="checkbox" id="setMeow"></label>
+      <label class="toggle-row"><span>🐱 <span data-i18n="game.pishi">Pishi</span></span><input type="checkbox" id="setFish"></label>
+      <label class="toggle-row"><span>📦 <span data-i18n="game.smuggle">Smuggle</span></span><input type="checkbox" id="setSmuggle"></label>
+    </div>
+    <div class="settings-section"><h4 data-i18n="dashboard.groups">Selected Groups</h4>
+      <div class="form-group"><label>Group IDs (comma-separated)</label>
+        <input type="text" id="setGroups" placeholder="-1001234567890, -1009876543210"></div>
+    </div>
+    <div class="settings-section"><h4 data-i18n="dashboard.timing">Timing</h4>
+      <div class="form-group"><label data-i18n="dashboard.meow_interval">Meow Interval (seconds)</label>
+        <input type="number" id="setInterval" min="60" value="300"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="deleteAccount" data-i18n="dashboard.delete_account">Delete Account</button>
+      <div class="spacer"></div>
+      <button class="btn btn-outline" id="cancelSettings" data-i18n="common.cancel">Cancel</button>
+      <button class="btn btn-primary" id="saveSettings" data-i18n="common.save">Save</button>
+    </div>
+  </div></div>
+</main>
+
+<script src="/js/theme.js"></script><script src="/js/i18n.js"></script>
+<script src="/js/api.js"></script><script src="/js/app.js"></script>
+<script>initDashboard();</script></body></html>

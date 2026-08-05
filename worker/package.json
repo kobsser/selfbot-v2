@@ -1,0 +1,11 @@
+{
+  "name": "selfbot",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute selfbot-db --file=./schema.sql"
+  },
+  "devDependencies": { "wrangler": "^3.80.0" }
+}

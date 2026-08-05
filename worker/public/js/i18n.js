@@ -1,0 +1,16 @@
+(function(){
+  const KEY='sb_lang';
+  const T={
+    en:{'login.title':'Login','login.password':'Password','login.confirm_password':'Confirm Password','login.submit':'Login','login.setup':'Create Account','login.new_account':'New Account','login.existing':'Returning User','dashboard.title':'Dashboard','dashboard.logout':'Logout','dashboard.add_account':'Add Account','dashboard.phone':'Phone Number','dashboard.settings':'Settings','dashboard.features':'Features','dashboard.groups':'Selected Groups','dashboard.timing':'Timing','dashboard.meow_interval':'Meow Interval (seconds)','dashboard.delete_account':'Delete Account','game.meow':'Meow','game.pishi':'Pishi','game.smuggle':'Smuggle','common.cancel':'Cancel','common.save':'Save','common.accounts':'accounts','login_flow.send_code':'Send Code','login_flow.submit_code':'Submit Code','login_flow.submit_password':'Submit Password','login_flow.code_hint':'Enter the code Telegram sent you.','login_flow.password_hint':'Two-step verification is enabled. Enter your Telegram password.','login_flow.starting':'Starting...','login_flow.sending':'Sending code via Telegram...','login_flow.code_sent':'Code sent! Check your Telegram app.','login_flow.password_needed':'Password required.','login_flow.verifying':'Verifying...','login_flow.success':'Account added successfully!'},
+    fa:{'login.title':'ورود','login.password':'رمز عبور','login.confirm_password':'تایید رمز عبور','login.submit':'ورود','login.setup':'ساخت حساب','login.new_account':'حساب جدید','login.existing':'کاربر قدیمی','dashboard.title':'داشبورد','dashboard.logout':'خروج','dashboard.add_account':'افزودن حساب','dashboard.phone':'شماره تلفن','dashboard.settings':'تنظیمات','dashboard.features':'قابلیت\u200cها','dashboard.groups':'گروه\u200cهای انتخاب شده','dashboard.timing':'زمان\u200cبندی','dashboard.meow_interval':'فاصله میو (ثانیه)','dashboard.delete_account':'حذف حساب','game.meow':'میو','game.pishi':'پیشی','game.smuggle':'قاچاق','common.cancel':'انصراف','common.save':'ذخیره','common.accounts':'حساب','login_flow.send_code':'ارسال کد','login_flow.submit_code':'ارسال کد','login_flow.submit_password':'ارسال رمز','login_flow.code_hint':'کدی که تلگرام برایتان فرستاده را وارد کنید.','login_flow.password_hint':'تایید دو مرحله\u200cای فعال است. رمز تلگرام خود را وارد کنید.','login_flow.starting':'در حال شروع...','login_flow.sending':'در حال ارسال کد از طریق تلگرام...','login_flow.code_sent':'کد ارسال شد! تلگرام خود را بررسی کنید.','login_flow.password_needed':'رمز عبور لازم است.','login_flow.verifying':'در حال تایید...','login_flow.success':'حساب با موفقیت اضافه شد!'}
+  };
+  const getLang=()=>localStorage.getItem(KEY)||'en';
+  const t=k=>(T[getLang()]&&T[getLang()][k])||T.en[k]||k;
+  function apply(){document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.getAttribute('data-i18n')));
+    document.documentElement.setAttribute('dir',getLang()==='fa'?'rtl':'ltr');
+    document.documentElement.setAttribute('lang',getLang());}
+  document.addEventListener('DOMContentLoaded',()=>{apply();
+    document.querySelectorAll('#langToggle').forEach(b=>b.addEventListener('click',()=>{
+      localStorage.setItem(KEY,getLang()==='en'?'fa':'en');apply();}));});
+  window.i18n={t,getLang};
+})();

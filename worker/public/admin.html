@@ -1,0 +1,38 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin Panel</title>
+<link rel="stylesheet" href="/css/styles.css"></head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand">⚙️ Admin Panel</div>
+  <div class="nav-actions">
+    <button id="themeToggle" class="icon-btn">🌓</button>
+    <button id="logoutBtn" class="btn btn-sm btn-outline">Logout</button>
+  </div>
+</nav>
+<main class="container"><div class="admin-grid">
+  <section class="card"><h3>⏱️ Job Schedule</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Run Hours</label><input type="number" id="runHours" min="0" max="5"></div>
+      <div class="form-group"><label>Run Minutes</label><input type="number" id="runMinutes" min="0" max="59"></div>
+    </div>
+    <div class="form-group"><label>Max Accounts (Global)</label><input type="number" id="maxAccountsGlobal" min="1"></div>
+    <div class="form-group"><label>Default Meow Interval (seconds)</label><input type="number" id="meowIntervalDefault" min="60"></div>
+    <button class="btn btn-primary" id="saveSettings">Save Settings</button>
+    <button class="btn btn-outline" id="triggerJob">🚀 Trigger Job Now</button>
+    <div id="triggerStatus" class="hint"></div>
+  </section>
+  <section class="card"><h3>🎟️ Invite Codes</h3>
+    <div class="form-row">
+      <input type="text" id="inviteNote" placeholder="Note (optional)">
+      <button class="btn btn-primary" id="createInvite">Create Invite</button>
+    </div>
+    <div id="invitesList" class="invites-list"></div>
+  </section>
+  <section class="card"><h3>👥 Users</h3><div id="usersList" class="users-list"></div></section>
+  <section class="card"><h3>📊 Job History</h3>
+    <button class="btn btn-outline btn-sm" id="refreshJobs">Refresh</button>
+    <div id="jobsList" class="jobs-list"></div>
+  </section>
+</div></main>
+<script src="/js/theme.js"></script><script src="/js/api.js"></script>
+<script src="/js/admin.js"></script><script>initAdmin();</script></body></html>
